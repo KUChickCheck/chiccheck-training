@@ -14,6 +14,21 @@ const FaceDetection = () => {
   const canvasRef = useRef(null);
   const [liveness, setLiveness] = useState([]);
 
+  const [selectedApiPath, setSelectedApiPath] = useState("predict"); // Default path
+  const [selectedLabel, setSelectedLabel] = useState("live"); // Default label for "train"
+
+  const handleApiSelection = (event) => {
+    setSelectedApiPath(event.target.value);
+    // Reset label when switching from "train" to another option
+    if (event.target.value !== "predict") {
+      setSelectedLabel(""); // Clear label when not "train"
+    }
+  };
+
+  const handleLabelSelection = (event) => {
+    setSelectedLabel(event.target.value);
+  };
+
   // Initialize the face detector
   useEffect(() => {
     const initializeFaceDetector = async () => {
@@ -81,13 +96,25 @@ const FaceDetection = () => {
 
   // Capture the current frame and send it to the API for liveness check
   const captureAndSendImage = async () => {
+    
     if (!videoRef.current || !canvasRef.current) return;
 
-    // Filter detections with score greater than 90%
+    if (selectedApiPath === "train" && !selectedLabel) {
+      alert("Please select a label (live or spoof) for training.");
+      return;
+    }
+
+    // Filter detections with score greater than 60%
     const validDetections = detections.filter((detection) => {
       const { score } = detection.categories[0];
       return score > 0.6; // 60% threshold
     });
+
+    // Check if more than one face is detected
+    if (validDetections.length > 1) {
+      console.log("More than one face detected. Only one face is allowed.");
+      return; // Do not process the image
+    }
 
     if (validDetections.length === 0) {
       console.log("No face with a high enough score for liveness detection.");
@@ -119,12 +146,12 @@ const FaceDetection = () => {
       // Create FormData to send the file
       const formData = new FormData();
       formData.append("image", file);
-    //   formData.append("label", "spoof");
+      formData.append("label", selectedLabel);
 
       // Send the image file to the API using axios
       try {
         const response = await axios.post(
-          "http://127.0.0.1:5000/predict",
+          `http://127.0.0.1:5000/${selectedApiPath}`,
           formData,
           {
             headers: {
@@ -145,19 +172,88 @@ const FaceDetection = () => {
     <div
       style={{
         width: "100%",
-        height: "100vh",
+        maxWidth: "400px", // Limit the maximum width for mobile
+        // height: "100vh",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
+        justifyContent: "center", // Center vertically
+        alignItems: "center", // Center horizontally
+        padding: "10px", // Add padding for better spacing on mobile
+        boxSizing: "border-box", // Ensure padding doesn't overflow the container
       }}
     >
+
+<div style={{ padding: "20px", textAlign: "center" }}>
+      <h3>Select API Path:</h3>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="apiPath"
+            value="train"
+            checked={selectedApiPath === "train"}
+            onChange={handleApiSelection}
+          />
+          Train
+        </label>
+        <br />
+        <label>
+          <input
+            type="radio"
+            name="apiPath"
+            value="predict"
+            checked={selectedApiPath === "predict"}
+            onChange={handleApiSelection}
+          />
+          Predict
+        </label>
+        <br />
+        <label>
+          <input
+            type="radio"
+            name="apiPath"
+            value="retrain"
+            checked={selectedApiPath === "retrain"}
+            onChange={handleApiSelection}
+          />
+          Retrain
+        </label>
+      </div>
+
+      {/* Conditional rendering for label selection if "train" is selected */}
+      {selectedApiPath === "train" && (
+        <div>
+          <h4>Select Label:</h4>
+          <label>
+            <input
+              type="radio"
+              name="label"
+              value="live"
+              checked={selectedLabel === "live"}
+              onChange={handleLabelSelection}
+            />
+            Live
+          </label>
+          <br />
+          <label>
+            <input
+              type="radio"
+              name="label"
+              value="spoof"
+              checked={selectedLabel === "spoof"}
+              onChange={handleLabelSelection}
+            />
+            Spoof
+          </label>
+        </div>
+      )}
+    </div>
       {/* Webcam Detection */}
       <button onClick={enableWebcam} style={{ marginBottom: "10px" }}>
         Enable Webcam
       </button>
       <button onClick={captureAndSendImage}>
-        Capture Image for Liveness Check
+        Click to Call API
       </button>
       <div
         id="liveView"
@@ -219,7 +315,7 @@ const FaceDetection = () => {
                   borderRadius: "3px",
                 }}
               >
-                {(score * 100).toFixed(2)}%
+                {(score * 100).toFixed(2)}%, {liveness.prediction}
               </div>
             </div>
           );
