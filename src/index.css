@@ -1,0 +1,19 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.detection-box {
+  position: absolute;
+  border: 2px solid red;
+}
+
+.bounding-box {
+  position: absolute;
+  border: 2px solid green;
+}
+
+#liveView {
+  position: relative;
+}
