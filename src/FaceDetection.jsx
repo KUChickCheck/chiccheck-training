@@ -151,7 +151,7 @@ const FaceDetection = () => {
       // Send the image file to the API using axios
       try {
         const response = await axios.post(
-          `http://127.0.0.1:5000/${selectedApiPath}`,
+          `${import.meta.env.VITE_API_URL}/${selectedApiPath}`,
           formData,
           {
             headers: {
